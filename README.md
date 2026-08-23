@@ -13,7 +13,7 @@ QuickComms is a deliberately small, private voice-chat application for gaming. I
 - Participant connection status
 - FastAPI WebSocket signaling
 - Docker Compose deployment with Caddy HTTPS and coturn
-- Native Windows client with system-wide configurable push-to-talk
+- Native Windows and macOS clients with system-wide configurable push-to-talk
 
 ## Architecture
 
@@ -45,7 +45,7 @@ For a true two-network test, deploy to the VM first. Microphone access from a re
 
 After joining a room, change **Transmission** from **Open microphone** to **Push to talk**. Space is the default shortcut. To change it, select the **Keyboard shortcut** button and press the desired key; Escape cancels the selection. The choice is saved locally on that browser or device. Hold the configured key or the on-screen button while speaking. Releasing it immediately disables the outgoing microphone track.
 
-In a browser, the keyboard shortcut works only while the QuickComms tab has focus. The Windows desktop client registers it as a system-wide shortcut, so it continues working while a game is focused.
+In a browser, the keyboard shortcut works only while the QuickComms tab has focus. The Windows and macOS desktop clients register it as a system-wide shortcut, so it continues working while a game is focused.
 
 ## Complete VM deployment guide (Ubuntu)
 
@@ -474,6 +474,50 @@ If Windows or another application already owns the selected shortcut, QuickComms
 
 Closing or leaving the room unregisters the shortcut. The selected server, transmission mode, and key are saved locally for later sessions.
 
+## macOS desktop client
+
+The macOS client uses the same Tauri application and global push-to-talk implementation. The automated build produces one universal DMG that runs natively on Apple Silicon and Intel Macs.
+
+### Download the macOS DMG from GitHub Actions
+
+The repository includes `.github/workflows/build-macos.yml`. It builds automatically when relevant desktop/client files are pushed to `main`, and it can be started manually:
+
+1. Open the repository's **Actions** tab.
+2. Select **Build macOS installer**.
+3. Open the latest successful run, or choose **Run workflow**.
+4. Download the `QuickComms-macOS-Universal` artifact.
+5. Extract the ZIP, open the DMG, and drag QuickComms into **Applications**.
+
+This development build is ad-hoc signed but not notarized with an Apple Developer ID. On first launch, macOS may block it because the developer cannot be verified. Control-click QuickComms in **Applications**, choose **Open**, and confirm. If macOS still blocks it, open **System Settings → Privacy & Security** and choose **Open Anyway** for QuickComms. Only bypass Gatekeeper for an artifact produced from a repository and commit that you trust.
+
+### Build directly on a Mac
+
+Install Xcode Command Line Tools, [Node.js LTS](https://nodejs.org/), and [Rust using rustup](https://www.rust-lang.org/tools/install). Then run:
+
+```bash
+git clone https://github.com/Kaizenick/QuickComms.git
+cd QuickComms
+npm install
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
+npm run desktop:build:macos
+```
+
+The universal DMG is created under:
+
+```text
+src-tauri/target/universal-apple-darwin/release/bundle/dmg/
+```
+
+### First launch and push-to-talk
+
+1. Enter the complete QuickComms server URL in **Server settings**. This is saved locally after the first successful use.
+2. Permit microphone access when macOS asks. If permission was denied, enable QuickComms under **System Settings → Privacy & Security → Microphone**.
+3. Join a room and set **Transmission** to **Push to talk**.
+4. Select **Keyboard shortcut**, press the desired key, and confirm that the global shortcut is active.
+5. Focus the game and test with another player.
+
+If macOS or another application already owns the shortcut, select another key. The DMG is suitable for private testing; public distribution requires Developer ID signing and Apple notarization.
+
 ## Testing
 
 Install the additional test dependency and run:
@@ -502,8 +546,7 @@ Before using it with friends, test these cases:
 
 ## Next milestones
 
-1. macOS desktop client and global push-to-talk validation
-2. System tray operation
-3. Short-lived TURN credentials
-4. Automatic reconnect after network changes
-5. Signed Windows installer and notarized macOS release
+1. System tray operation
+2. Short-lived TURN credentials
+3. Automatic reconnect after network changes
+4. Signed Windows installer and notarized macOS release

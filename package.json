@@ -6,7 +6,8 @@
     "desktop:icons": "tauri icon client/assets/app-icon.svg",
     "desktop:dev": "tauri dev",
     "desktop:build": "npm run desktop:icons && tauri build",
-    "desktop:build:windows": "npm run desktop:icons && tauri build --bundles nsis"
+    "desktop:build:windows": "npm run desktop:icons && tauri build --bundles nsis",
+    "desktop:build:macos": "npm run desktop:icons && tauri build --target universal-apple-darwin --bundles dmg"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.8.4"
