@@ -48,6 +48,24 @@
           <select id="microphoneSelect"></select>
           <label for="speakerSelect">Speaker</label>
           <select id="speakerSelect"></select>
+          <label for="transmissionMode">Transmission</label>
+          <select id="transmissionMode">
+            <option value="open">Open microphone</option>
+            <option value="push">Push to talk</option>
+          </select>
+        </div>
+
+        <div id="pushToTalkPanel" class="push-to-talk hidden">
+          <button id="pushToTalkButton" type="button" aria-pressed="false">
+            <span class="ptt-icon" aria-hidden="true">🎙</span>
+            <strong>Hold to talk</strong>
+            <small id="pushToTalkHint">or hold Space</small>
+          </button>
+          <div class="ptt-settings">
+            <span>Keyboard shortcut</span>
+            <button id="pushToTalkKeyButton" type="button">Space</button>
+          </div>
+          <p>Keep this window focused to use the Space shortcut.</p>
         </div>
 
         <div class="controls">

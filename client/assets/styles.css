@@ -41,6 +41,20 @@ input:focus,select:focus { border-color:#75e69c; box-shadow:0 0 0 3px #75e69c1c;
 .device-panel { display:grid; grid-template-columns:80px 1fr; align-items:center; gap:10px 12px; padding:17px; border-radius:14px; background:#0e1014; }
 .device-panel label { margin:0; }
 .device-panel select { padding:9px 10px; font-size:12px; }
+.push-to-talk { margin-top:16px; padding:16px; border:1px solid #2d4937; border-radius:14px; background:#101a14; text-align:center; }
+#pushToTalkButton { width:100%; min-height:96px; border:1px solid #4f8b63; border-radius:13px; color:#dff8e7; background:#1b3624; user-select:none; -webkit-user-select:none; touch-action:none; }
+#pushToTalkButton:hover:not(:disabled) { background:#21452d; }
+#pushToTalkButton.transmitting { color:#0c1810; background:#83efa8; border-color:#a4f7c0; box-shadow:0 0 0 4px #83efa822,0 0 30px #55e88b22; }
+#pushToTalkButton:disabled { cursor:not-allowed; opacity:.55; }
+.push-to-talk .ptt-icon { display:block; font-size:22px; margin-bottom:4px; }
+.push-to-talk strong,.push-to-talk small { display:block; }
+.push-to-talk strong { font-size:14px; }
+.push-to-talk small { margin-top:4px; color:#9bcaaa; font-size:10px; }
+.push-to-talk button.transmitting small { color:#315c40; }
+.push-to-talk p { margin:9px 0 0; color:#779382; font-size:10px; }
+.ptt-settings { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:11px; color:#9db2a4; font-size:11px; }
+#pushToTalkKeyButton { min-width:100px; border:1px solid #3e5c48; border-radius:8px; padding:7px 10px; color:#dff8e7; background:#18261d; font-size:11px; font-weight:750; }
+#pushToTalkKeyButton:hover,#pushToTalkKeyButton.capturing { border-color:#76df99; background:#203a29; }
 .controls { display:flex; justify-content:center; gap:12px; margin-top:24px; }
 .control { min-width:102px; border:1px solid #30343c; border-radius:13px; padding:11px 16px; background:#191c22; color:#f2f3f5; }
 .control span { display:block; font-size:17px; margin-bottom:4px; }.control strong{font-size:11px}

@@ -9,6 +9,10 @@ const state = {
   peers: new Map(),
   peerNames: new Map(),
   muted: false,
+  transmissionMode: localStorage.getItem("quickcomms-transmission-mode") === "push" ? "push" : "open",
+  pushToTalkPressed: false,
+  pushToTalkKey: localStorage.getItem("quickcomms-push-to-talk-key") || "Space",
+  capturingPushToTalkKey: false,
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
 };
 
@@ -18,6 +22,9 @@ const elements = {
   server: $("serverInput"),
   badge: $("connectionBadge"), roomCode: $("roomCode"), participants: $("participantList"),
   mic: $("microphoneSelect"), speaker: $("speakerSelect"), mute: $("muteButton"),
+  transmissionMode: $("transmissionMode"), pushToTalkPanel: $("pushToTalkPanel"),
+  pushToTalkButton: $("pushToTalkButton"), pushToTalkHint: $("pushToTalkHint"),
+  pushToTalkKeyButton: $("pushToTalkKeyButton"),
   leave: $("leaveButton"), copy: $("copyRoom"), random: $("randomRoom"),
   audio: $("audioContainer"),
 };
@@ -25,6 +32,7 @@ const elements = {
 elements.name.value = localStorage.getItem("quickcomms-name") || "";
 elements.room.value = new URLSearchParams(location.search).get("room") || randomCode();
 elements.server.value = localStorage.getItem("quickcomms-server") || "";
+elements.transmissionMode.value = state.transmissionMode;
 
 function randomCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -55,6 +63,7 @@ async function joinRoom() {
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: false,
     });
+    applyAudioTrackState();
     const response = await fetch(`${configuredServer}/api/config`);
     if (response.ok) state.iceServers = (await response.json()).iceServers;
     await refreshDevices();
@@ -96,6 +105,7 @@ async function handleSignal(message) {
     elements.roomCode.textContent = state.room;
     setOnline(true);
     state.peerNames.set(state.clientId, state.name);
+    updateTransmissionUi();
     renderParticipants();
     for (const peer of message.peers) {
       state.peerNames.set(peer.id, peer.name);
@@ -193,11 +203,19 @@ function renderParticipants() {
     title.textContent = `${name}${self ? " (You)" : ""}`;
     const status = document.createElement("div");
     status.className = "participant-state";
-    status.textContent = connected ? (self && state.muted ? "Muted" : "Connected") : "Connecting…";
+    status.textContent = connected ? (self ? selfAudioStatus() : "Connected") : "Connecting…";
     info.append(title, status);
     item.append(avatar, info);
     elements.participants.append(item);
   }
+}
+
+function selfAudioStatus() {
+  if (state.muted) return "Muted";
+  if (state.transmissionMode === "push") {
+    return state.pushToTalkPressed ? "Talking" : "Push to talk ready";
+  }
+  return "Connected";
 }
 
 async function refreshDevices() {
@@ -221,7 +239,7 @@ function fillSelect(select, devices, fallback) {
 async function switchMicrophone() {
   const next = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: elements.mic.value } } });
   const track = next.getAudioTracks()[0];
-  track.enabled = !state.muted;
+  track.enabled = shouldTransmit();
   for (const connection of state.peers.values()) {
     await connection.getSenders().find((sender) => sender.track?.kind === "audio")?.replaceTrack(track);
   }
@@ -229,13 +247,102 @@ async function switchMicrophone() {
   state.stream = next;
 }
 
+function shouldTransmit() {
+  return !state.muted && (state.transmissionMode === "open" || state.pushToTalkPressed);
+}
+
+function applyAudioTrackState() {
+  const enabled = shouldTransmit();
+  state.stream?.getAudioTracks().forEach((track) => { track.enabled = enabled; });
+}
+
+function updateTransmissionUi() {
+  const pushMode = state.transmissionMode === "push";
+  elements.pushToTalkPanel.classList.toggle("hidden", !pushMode);
+  elements.pushToTalkButton.classList.toggle("transmitting", pushMode && state.pushToTalkPressed);
+  elements.pushToTalkButton.disabled = state.muted;
+  elements.pushToTalkButton.setAttribute("aria-pressed", String(pushMode && state.pushToTalkPressed));
+  elements.pushToTalkButton.querySelector("strong").textContent = state.muted
+    ? "Microphone muted"
+    : state.pushToTalkPressed ? "Talking…" : "Hold to talk";
+  const keyName = formatKeyCode(state.pushToTalkKey);
+  elements.pushToTalkHint.textContent = `or hold ${keyName}`;
+  elements.pushToTalkKeyButton.textContent = state.capturingPushToTalkKey ? "Press a key…" : keyName;
+  elements.pushToTalkKeyButton.classList.toggle("capturing", state.capturingPushToTalkKey);
+  elements.pushToTalkPanel.querySelector("p").textContent = `Keep this window focused to use the ${keyName} shortcut.`;
+  renderParticipants();
+}
+
+function formatKeyCode(code) {
+  if (code === "Space") return "Space";
+  if (code.startsWith("Key")) return code.slice(3);
+  if (code.startsWith("Digit")) return code.slice(5);
+  const names = {
+    Backquote: "`", Minus: "-", Equal: "=", BracketLeft: "[", BracketRight: "]",
+    Backslash: "\\", Semicolon: ";", Quote: "'", Comma: ",", Period: ".", Slash: "/",
+    ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→",
+  };
+  return names[code] || code.replace(/(Left|Right)$/, " $1");
+}
+
+function beginPushToTalkKeyCapture() {
+  state.pushToTalkPressed = false;
+  state.capturingPushToTalkKey = true;
+  applyAudioTrackState();
+  updateTransmissionUi();
+}
+
+function capturePushToTalkKey(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.code === "Escape") {
+    state.capturingPushToTalkKey = false;
+    updateTransmissionUi();
+    return;
+  }
+  if (["ShiftLeft", "ShiftRight", "ControlLeft", "ControlRight", "AltLeft", "AltRight", "MetaLeft", "MetaRight"].includes(event.code)) {
+    return;
+  }
+  state.pushToTalkKey = event.code;
+  state.capturingPushToTalkKey = false;
+  localStorage.setItem("quickcomms-push-to-talk-key", state.pushToTalkKey);
+  elements.pushToTalkKeyButton.blur();
+  updateTransmissionUi();
+}
+
+function setTransmissionMode(mode) {
+  state.transmissionMode = mode === "push" ? "push" : "open";
+  state.pushToTalkPressed = false;
+  state.capturingPushToTalkKey = false;
+  localStorage.setItem("quickcomms-transmission-mode", state.transmissionMode);
+  applyAudioTrackState();
+  updateTransmissionUi();
+}
+
+function setPushToTalkPressed(pressed) {
+  if (state.transmissionMode !== "push" || state.muted || elements.roomView.classList.contains("hidden")) {
+    pressed = false;
+  }
+  if (state.pushToTalkPressed === pressed) return;
+  state.pushToTalkPressed = pressed;
+  applyAudioTrackState();
+  updateTransmissionUi();
+}
+
+function isEditableTarget(target) {
+  return target instanceof HTMLElement && (
+    target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
+  );
+}
+
 function toggleMute() {
   state.muted = !state.muted;
-  state.stream?.getAudioTracks().forEach((track) => { track.enabled = !state.muted; });
+  if (state.muted) state.pushToTalkPressed = false;
+  applyAudioTrackState();
   elements.mute.classList.toggle("active", state.muted);
   elements.mute.querySelector("strong").textContent = state.muted ? "Unmute" : "Mute";
   elements.mute.querySelector("span").textContent = state.muted ? "🔇" : "🎙";
-  renderParticipants();
+  updateTransmissionUi();
 }
 
 function leaveRoom(message = "") {
@@ -244,6 +351,8 @@ function leaveRoom(message = "") {
   if (socket?.readyState === WebSocket.OPEN) socket.close(1000, "User left");
   for (const peerId of [...state.peers.keys()]) removePeer(peerId);
   state.peerNames.clear();
+  state.pushToTalkPressed = false;
+  state.capturingPushToTalkKey = false;
   stopLocalStream();
   elements.roomView.classList.add("hidden");
   elements.joinView.classList.remove("hidden");
@@ -272,6 +381,16 @@ elements.random.addEventListener("click", () => { elements.room.value = randomCo
 elements.mute.addEventListener("click", toggleMute);
 elements.leave.addEventListener("click", () => leaveRoom());
 elements.mic.addEventListener("change", () => switchMicrophone().catch((error) => alert(error.message)));
+elements.transmissionMode.addEventListener("change", () => setTransmissionMode(elements.transmissionMode.value));
+elements.pushToTalkKeyButton.addEventListener("click", beginPushToTalkKeyCapture);
+elements.pushToTalkButton.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  elements.pushToTalkButton.setPointerCapture?.(event.pointerId);
+  setPushToTalkPressed(true);
+});
+for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
+  elements.pushToTalkButton.addEventListener(eventName, () => setPushToTalkPressed(false));
+}
 elements.speaker.addEventListener("change", () => {
   document.querySelectorAll("audio").forEach((audio) => audio.setSinkId?.(elements.speaker.value));
 });
@@ -281,5 +400,26 @@ elements.copy.addEventListener("click", async () => {
   setTimeout(() => { elements.copy.textContent = "Copy invite code"; }, 1200);
 });
 elements.room.addEventListener("keydown", (event) => { if (event.key === "Enter") joinRoom(); });
+window.addEventListener("keydown", (event) => {
+  if (state.capturingPushToTalkKey) {
+    capturePushToTalkKey(event);
+    return;
+  }
+  if (event.code !== state.pushToTalkKey || event.repeat || isEditableTarget(event.target)) return;
+  if (state.transmissionMode === "push" && !elements.roomView.classList.contains("hidden")) {
+    event.preventDefault();
+    setPushToTalkPressed(true);
+  }
+});
+window.addEventListener("keyup", (event) => {
+  if (event.code === state.pushToTalkKey && state.pushToTalkPressed) {
+    event.preventDefault();
+    setPushToTalkPressed(false);
+  }
+});
+window.addEventListener("blur", () => setPushToTalkPressed(false));
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) setPushToTalkPressed(false);
+});
 window.addEventListener("beforeunload", () => state.socket?.close());
 navigator.mediaDevices?.addEventListener("devicechange", refreshDevices);

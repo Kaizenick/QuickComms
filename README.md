@@ -7,6 +7,7 @@ QuickComms is a deliberately small, private voice-chat application for gaming. I
 - Private room codes with a four-player limit
 - Encrypted WebRTC audio
 - Mute/unmute
+- Optional push-to-talk using a configurable keyboard key or an on-screen hold button
 - Microphone and speaker selection
 - Echo cancellation and noise suppression
 - Participant connection status
@@ -39,6 +40,12 @@ uvicorn app.main:app --reload
 Open `http://localhost:8000` in two browser windows. Use different display names and the same room code. Browsers permit microphone access on localhost.
 
 For a true two-network test, deploy to the VM first. Microphone access from a remote browser requires HTTPS.
+
+### Push to talk
+
+After joining a room, change **Transmission** from **Open microphone** to **Push to talk**. Space is the default shortcut. To change it, select the **Keyboard shortcut** button and press the desired key; Escape cancels the selection. The choice is saved locally on that browser or device. Hold the configured key or the on-screen button while speaking. Releasing it immediately disables the outgoing microphone track.
+
+The keyboard shortcut works only while the QuickComms browser tab or desktop window has focus. A system-wide shortcut that continues working while a game is focused requires the packaged desktop client and is a future milestone.
 
 ## Complete VM deployment guide (Ubuntu)
 
@@ -450,7 +457,7 @@ Before using it with friends, test these cases:
 
 ## Next milestones
 
-1. Global push-to-talk shortcut
+1. System-wide push-to-talk shortcut for the desktop app
 2. System tray operation
 3. Short-lived TURN credentials
 4. Automatic reconnect after network changes
