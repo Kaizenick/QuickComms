@@ -48,10 +48,10 @@ The production stack consists of three small containers:
 - `caddy`: HTTPS reverse proxy and automatic TLS certificate renewal
 - `coturn`: TURN relay for players who cannot establish a direct WebRTC connection
 
-The current QuickComms deployment uses:
+Choose the following values for your deployment:
 
-- VM public IP: `104.236.56.159`
-- DuckDNS name: `quickcomms.duckdns.org`
+- VM public IP: your VM provider's assigned public IPv4 address
+- DuckDNS name: `your-subdomain.duckdns.org`
 - Public web port: `8443`
 - TURN port: `3478`
 - TURN relay range: `49160-49200/udp`
@@ -132,17 +132,17 @@ docker compose version
 ### 3. Configure DuckDNS
 
 1. Sign in at [DuckDNS](https://www.duckdns.org/).
-2. Create the subdomain `quickcomms`.
-3. Set its current IPv4 address to `104.236.56.159` and select **update ip**.
+2. Create a unique subdomain, such as `your-subdomain`.
+3. Set its current IPv4 address to your VM's public IPv4 address and select **update ip**.
 4. Copy the account token for use in the private `.env` file in step 5.
 
 Verify forward DNS from your computer:
 
 ```bash
-nslookup quickcomms.duckdns.org
+nslookup your-subdomain.duckdns.org
 ```
 
-The answer must contain `104.236.56.159`. Running `nslookup 104.236.56.159` performs a reverse-DNS lookup and an `NXDOMAIN` response there does not mean the DuckDNS record is broken.
+The answer must contain your VM's public IPv4 address. Running `nslookup YOUR_VM_PUBLIC_IP` performs a reverse-DNS lookup and an `NXDOMAIN` response there does not mean the DuckDNS record is broken.
 
 ### 4. Clone the repository
 
@@ -170,11 +170,11 @@ cd ~/QuickComms/infrastructure
 nano .env
 ```
 
-Add the following values, replacing the two secret placeholders. Use only the DuckDNS token itself—not a DuckDNS update URL:
+Add the following values, replacing every placeholder. Use only the DuckDNS token itself—not a DuckDNS update URL:
 
 ```dotenv
-DOMAIN=quickcomms.duckdns.org
-PUBLIC_IP=104.236.56.159
+DOMAIN=your-subdomain.duckdns.org
+PUBLIC_IP=YOUR_VM_PUBLIC_IP
 TURN_USERNAME=quickcomms
 TURN_PASSWORD=REPLACE_WITH_A_LONG_RANDOM_PASSWORD
 DUCKDNS_API_TOKEN=REPLACE_WITH_YOUR_DUCKDNS_TOKEN
@@ -248,7 +248,7 @@ Follow the certificate process if needed:
 docker compose logs caddy --tail=100
 ```
 
-Successful logs contain messages similar to `authorization finalized` and `certificate obtained successfully` for `quickcomms.duckdns.org`.
+Successful logs contain messages similar to `authorization finalized` and `certificate obtained successfully` for your DuckDNS name.
 
 ### 8. Verify the deployment
 
@@ -264,7 +264,7 @@ docker stats --no-stream
 From a computer outside the VM:
 
 ```bash
-curl -fsS https://quickcomms.duckdns.org:8443/api/health
+curl -fsS https://your-subdomain.duckdns.org:8443/api/health
 ```
 
 Expected response:
@@ -273,7 +273,7 @@ Expected response:
 {"status":"ok","rooms":0}
 ```
 
-Open [https://quickcomms.duckdns.org:8443](https://quickcomms.duckdns.org:8443), permit microphone access, and join a room. On a second device, use a different display name and the exact same room code. Testing the second device on a phone hotspot verifies the TURN fallback across two networks.
+Open `https://your-subdomain.duckdns.org:8443`, permit microphone access, and join a room. On a second device, use a different display name and the exact same room code. Testing the second device on a phone hotspot verifies the TURN fallback across two networks.
 
 ### 9. Routine management
 
@@ -304,7 +304,7 @@ git pull --ff-only origin main
 cd infrastructure
 docker compose up -d --build
 docker compose ps
-curl -fsS https://quickcomms.duckdns.org:8443/api/health
+curl -fsS https://your-subdomain.duckdns.org:8443/api/health
 ```
 
 Stop the containers while preserving their volumes and configuration:
@@ -346,7 +346,7 @@ Pi-hole is expected to own ports 80 and 443 on this VM. Do not stop it. The curr
 Check DNS, containers, and logs:
 
 ```bash
-nslookup quickcomms.duckdns.org
+nslookup your-subdomain.duckdns.org
 cd ~/QuickComms/infrastructure
 docker compose ps
 docker compose logs caddy --tail=100
