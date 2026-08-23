@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "QuickComms",
+  "version": "0.1.0",
+  "identifier": "com.quickcomms.desktop",
+  "build": {
+    "frontendDist": "../client"
+  },
+  "app": {
+    "windows": [{
+      "title": "QuickComms",
+      "width": 680,
+      "height": 820,
+      "minWidth": 420,
+      "minHeight": 620,
+      "resizable": true
+    }],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self' https: wss: http://localhost:* ws://localhost:*; media-src 'self' blob: mediastream:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all"
+  }
+}

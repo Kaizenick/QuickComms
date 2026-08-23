@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101217" />
+    <title>QuickComms</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div><h1>QuickComms</h1><p>Talk. Play. Nothing else.</p></div>
+        <span id="connectionBadge" class="badge offline">Offline</span>
+      </header>
+
+      <section id="joinView" class="card join-card">
+        <div class="eyebrow">PRIVATE VOICE ROOM</div>
+        <h2>Ready when your squad is.</h2>
+        <p class="subtle">Create a room or enter a code from a friend. Up to four players.</p>
+        <label for="nameInput">Display name</label>
+        <input id="nameInput" maxlength="32" autocomplete="nickname" placeholder="Soham" />
+        <label for="roomInput">Room code</label>
+        <div class="room-input-row">
+          <input id="roomInput" maxlength="12" autocomplete="off" placeholder="GAME42" />
+          <button id="randomRoom" class="icon-button" type="button" title="Generate room code">↻</button>
+        </div>
+        <details class="advanced">
+          <summary>Server settings</summary>
+          <label for="serverInput">Server URL</label>
+          <input id="serverInput" inputmode="url" placeholder="https://voice.example.com" />
+          <p>Leave blank when opening QuickComms from the server in a browser.</p>
+        </details>
+        <button id="joinButton" class="primary" type="button">Join voice room</button>
+        <p id="joinError" class="error" role="alert"></p>
+      </section>
+
+      <section id="roomView" class="card room-card hidden">
+        <div class="room-heading">
+          <div><div class="eyebrow">ROOM</div><h2 id="roomCode">—</h2></div>
+          <button id="copyRoom" class="secondary" type="button">Copy invite code</button>
+        </div>
+        <div id="participantList" class="participants" aria-live="polite"></div>
+
+        <div class="device-panel">
+          <label for="microphoneSelect">Microphone</label>
+          <select id="microphoneSelect"></select>
+          <label for="speakerSelect">Speaker</label>
+          <select id="speakerSelect"></select>
+        </div>
+
+        <div class="controls">
+          <button id="muteButton" class="control" type="button"><span>🎙</span><strong>Mute</strong></button>
+          <button id="leaveButton" class="control danger" type="button"><span>↗</span><strong>Leave</strong></button>
+        </div>
+        <p class="privacy-note">🔒 Audio is encrypted in transit and sent directly when possible.</p>
+      </section>
+    </main>
+    <div id="audioContainer" hidden></div>
+    <script type="module" src="/assets/app.js"></script>
+  </body>
+</html>
