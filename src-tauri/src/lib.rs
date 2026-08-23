@@ -13,7 +13,7 @@ fn request_macos_microphone_permission() {
 
     unsafe {
         AVCaptureDevice::requestAccessForMediaType_completionHandler(
-            AVMediaTypeAudio,
+            AVMediaTypeAudio.expect("AVFoundation audio media type is unavailable"),
             &completion,
         );
     }
