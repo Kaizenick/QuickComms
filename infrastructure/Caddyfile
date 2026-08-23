@@ -1,4 +1,7 @@
-{$DOMAIN} {
+https://{$DOMAIN}:8443 {
+    tls {
+        dns duckdns {env.DUCKDNS_API_TOKEN}
+    }
     encode zstd gzip
     reverse_proxy app:8000
 }

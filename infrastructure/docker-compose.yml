@@ -11,14 +11,16 @@ services:
     networks: [quickcomms]
 
   caddy:
-    image: caddy:2.10-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      - "8443:8443"
+      - "8443:8443/udp"
     environment:
       DOMAIN: ${DOMAIN}
+      DUCKDNS_API_TOKEN: ${DUCKDNS_API_TOKEN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

@@ -47,28 +47,27 @@ Requirements:
 - A Linux VM with Docker Engine and Docker Compose
 - A public IPv4 address
 - A domain or subdomain pointing to that address
-- Firewall access for TCP 80/443/3478 and UDP 443/3478/49160-49200
+- Firewall access for TCP 8443/3478 and UDP 8443/3478/49160-49200
 
 ```bash
 cd infrastructure
 cp .env.example .env
 ```
 
-Edit `.env` with your domain, public IP, and a long random TURN password. Then run:
+Edit `.env` with your domain, public IP, a long random TURN password, and your DuckDNS API token. Caddy uses the DuckDNS DNS challenge so QuickComms can coexist with another service on ports 80 and 443. Then run:
 
 ```bash
 docker compose up -d --build
 docker compose ps
 ```
 
-Caddy obtains and renews the HTTPS certificate automatically. Visit `https://your-domain.example/api/health`; it should return `{"status":"ok",...}`.
+Caddy obtains and renews the HTTPS certificate automatically. Visit `https://your-domain.example:8443/api/health`; it should return `{"status":"ok",...}`.
 
 ### VM firewall example (Ubuntu UFW)
 
 ```bash
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw allow 443/udp
+sudo ufw allow 8443/tcp
+sudo ufw allow 8443/udp
 sudo ufw allow 3478/tcp
 sudo ufw allow 3478/udp
 sudo ufw allow 49160:49200/udp
