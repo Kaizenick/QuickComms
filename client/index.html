@@ -26,11 +26,11 @@
           <input id="roomInput" maxlength="12" autocomplete="off" placeholder="GAME42" />
           <button id="randomRoom" class="icon-button" type="button" title="Generate room code">↻</button>
         </div>
-        <details class="advanced">
+        <details id="serverSettings" class="advanced">
           <summary>Server settings</summary>
           <label for="serverInput">Server URL</label>
           <input id="serverInput" inputmode="url" placeholder="https://voice.example.com" />
-          <p>Leave blank when opening QuickComms from the server in a browser.</p>
+          <p id="serverHelp">Leave blank when opening QuickComms from the server in a browser.</p>
         </details>
         <button id="joinButton" class="primary" type="button">Join voice room</button>
         <p id="joinError" class="error" role="alert"></p>
@@ -65,7 +65,7 @@
             <span>Keyboard shortcut</span>
             <button id="pushToTalkKeyButton" type="button">Space</button>
           </div>
-          <p>Keep this window focused to use the Space shortcut.</p>
+          <p id="pushToTalkStatus">Keep this window focused to use the Space shortcut.</p>
         </div>
 
         <div class="controls">

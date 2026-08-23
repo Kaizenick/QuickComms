@@ -13,7 +13,7 @@ QuickComms is a deliberately small, private voice-chat application for gaming. I
 - Participant connection status
 - FastAPI WebSocket signaling
 - Docker Compose deployment with Caddy HTTPS and coturn
-- Tauri 2 desktop packaging scaffold for Windows and macOS
+- Native Windows client with system-wide configurable push-to-talk
 
 ## Architecture
 
@@ -45,7 +45,7 @@ For a true two-network test, deploy to the VM first. Microphone access from a re
 
 After joining a room, change **Transmission** from **Open microphone** to **Push to talk**. Space is the default shortcut. To change it, select the **Keyboard shortcut** button and press the desired key; Escape cancels the selection. The choice is saved locally on that browser or device. Hold the configured key or the on-screen button while speaking. Releasing it immediately disables the outgoing microphone track.
 
-The keyboard shortcut works only while the QuickComms browser tab or desktop window has focus. A system-wide shortcut that continues working while a game is focused requires the packaged desktop client and is a future milestone.
+In a browser, the keyboard shortcut works only while the QuickComms tab has focus. The Windows desktop client registers it as a system-wide shortcut, so it continues working while a game is focused.
 
 ## Complete VM deployment guide (Ubuntu)
 
@@ -414,20 +414,65 @@ sudo ./scripts/cleanup-vm.sh --purge-config --remove-firewall
 
 The cleanup is destructive for QuickComms Caddy volumes, including cached certificates, but Caddy can request a new certificate on the next deployment.
 
-## Build the desktop app
+## Windows desktop client
 
-The desktop client must be compiled on each target operating system. Install the Tauri prerequisites for that OS, Node.js, and Rust, then:
+The Windows client uses Tauri 2 and Microsoft Edge WebView2. It shares the same HTML, CSS, WebRTC, and room experience as the browser client, but its push-to-talk key is registered with Windows and works while another application has focus.
 
-```bash
+### Download a Windows installer from GitHub Actions
+
+The repository includes `.github/workflows/build-windows.yml`. It creates an x64 NSIS installer on GitHub's Windows runner whenever relevant desktop/client files are pushed to `main`, and it can also be started manually:
+
+1. Open the repository's **Actions** tab.
+2. Select **Build Windows installer**.
+3. Open the latest successful run, or choose **Run workflow**.
+4. Download the `QuickComms-Windows-x64` artifact.
+5. Extract the ZIP and run the included `QuickComms_*_x64-setup.exe` installer.
+
+The current installer is not code-signed, so Windows SmartScreen may show an **Unknown publisher** warning. Only install artifacts produced from a repository and commit that you trust. Code signing is required before distributing it broadly.
+
+### Build directly on Windows
+
+Install these prerequisites:
+
+- [Node.js LTS](https://nodejs.org/)
+- [Rust using rustup](https://www.rust-lang.org/tools/install) with the MSVC toolchain
+- [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with **Desktop development with C++** selected
+- Microsoft Edge WebView2 Runtime, if it is not already present (it is normally included with current Windows 10 and Windows 11 systems)
+
+Then use PowerShell:
+
+```powershell
+git clone https://github.com/Kaizenick/QuickComms.git
+cd QuickComms
 npm install
-npm run desktop:build
+npm run desktop:build:windows
 ```
 
-- Run the command on Windows to produce the Windows installer.
-- Run it on macOS to produce the macOS application and disk image.
-- In the installed app, expand **Server settings** and enter the VM URL, such as `https://voice.example.com`.
+The installer is created under:
 
-The web client and desktop client share exactly the same HTML, CSS, and WebRTC code.
+```text
+src-tauri\target\release\bundle\nsis\
+```
+
+For a development build with the WebView inspector available:
+
+```powershell
+npm install
+npm run desktop:dev
+```
+
+### First launch and push-to-talk
+
+1. Open **Server settings**.
+2. Enter the complete public server URL, for example `https://your-subdomain.duckdns.org:8443`. It is stored locally, so this is normally required only once.
+3. Enter a display name and room code, then join.
+4. Set **Transmission** to **Push to talk**.
+5. Select **Keyboard shortcut** and press the desired key.
+6. Confirm that the interface says the global shortcut is active, minimize QuickComms, focus the game, and test it with another player.
+
+If Windows or another application already owns the selected shortcut, QuickComms displays an error and asks for another key. A bare shortcut may also prevent that key from reaching the game, so choose a key that the game does not need.
+
+Closing or leaving the room unregisters the shortcut. The selected server, transmission mode, and key are saved locally for later sessions.
 
 ## Testing
 
@@ -457,7 +502,7 @@ Before using it with friends, test these cases:
 
 ## Next milestones
 
-1. System-wide push-to-talk shortcut for the desktop app
+1. macOS desktop client and global push-to-talk validation
 2. System tray operation
 3. Short-lived TURN credentials
 4. Automatic reconnect after network changes

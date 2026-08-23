@@ -1,4 +1,6 @@
 const $ = (id) => document.getElementById(id);
+const tauriGlobalShortcut = window.__TAURI__?.globalShortcut || null;
+const isTauriDesktop = Boolean(window.__TAURI__ || window.__TAURI_INTERNALS__);
 
 const state = {
   socket: null,
@@ -13,18 +15,21 @@ const state = {
   pushToTalkPressed: false,
   pushToTalkKey: localStorage.getItem("quickcomms-push-to-talk-key") || "Space",
   capturingPushToTalkKey: false,
+  registeredGlobalShortcut: null,
+  globalShortcutError: "",
+  globalShortcutSync: Promise.resolve(),
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
 };
 
 const elements = {
   joinView: $("joinView"), roomView: $("roomView"), name: $("nameInput"),
   room: $("roomInput"), join: $("joinButton"), error: $("joinError"),
-  server: $("serverInput"),
+  server: $("serverInput"), serverSettings: $("serverSettings"), serverHelp: $("serverHelp"),
   badge: $("connectionBadge"), roomCode: $("roomCode"), participants: $("participantList"),
   mic: $("microphoneSelect"), speaker: $("speakerSelect"), mute: $("muteButton"),
   transmissionMode: $("transmissionMode"), pushToTalkPanel: $("pushToTalkPanel"),
   pushToTalkButton: $("pushToTalkButton"), pushToTalkHint: $("pushToTalkHint"),
-  pushToTalkKeyButton: $("pushToTalkKeyButton"),
+  pushToTalkKeyButton: $("pushToTalkKeyButton"), pushToTalkStatus: $("pushToTalkStatus"),
   leave: $("leaveButton"), copy: $("copyRoom"), random: $("randomRoom"),
   audio: $("audioContainer"),
 };
@@ -33,6 +38,10 @@ elements.name.value = localStorage.getItem("quickcomms-name") || "";
 elements.room.value = new URLSearchParams(location.search).get("room") || randomCode();
 elements.server.value = localStorage.getItem("quickcomms-server") || "";
 elements.transmissionMode.value = state.transmissionMode;
+if (isTauriDesktop) {
+  elements.serverSettings.open = !elements.server.value;
+  elements.serverHelp.textContent = "Required in the desktop app. Enter the complete HTTPS URL of your QuickComms server.";
+}
 
 function randomCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -53,10 +62,16 @@ async function joinRoom() {
     elements.error.textContent = "Enter your name and a room code of at least four characters.";
     return;
   }
+  const configuredServer = elements.server.value.trim().replace(/\/$/, "");
+  if (isTauriDesktop && !configuredServer) {
+    elements.serverSettings.open = true;
+    elements.error.textContent = "Enter the QuickComms server URL before joining from the desktop app.";
+    elements.server.focus();
+    return;
+  }
   elements.join.disabled = true;
   elements.join.textContent = "Connecting…";
   try {
-    const configuredServer = elements.server.value.trim().replace(/\/$/, "");
     if (configuredServer) localStorage.setItem("quickcomms-server", configuredServer);
     else localStorage.removeItem("quickcomms-server");
     state.stream = await navigator.mediaDevices.getUserMedia({
@@ -106,6 +121,7 @@ async function handleSignal(message) {
     setOnline(true);
     state.peerNames.set(state.clientId, state.name);
     updateTransmissionUi();
+    queueGlobalShortcutSync();
     renderParticipants();
     for (const peer of message.peers) {
       state.peerNames.set(peer.id, peer.name);
@@ -269,8 +285,65 @@ function updateTransmissionUi() {
   elements.pushToTalkHint.textContent = `or hold ${keyName}`;
   elements.pushToTalkKeyButton.textContent = state.capturingPushToTalkKey ? "Press a key…" : keyName;
   elements.pushToTalkKeyButton.classList.toggle("capturing", state.capturingPushToTalkKey);
-  elements.pushToTalkPanel.querySelector("p").textContent = `Keep this window focused to use the ${keyName} shortcut.`;
+  elements.pushToTalkStatus.classList.toggle("error", Boolean(state.globalShortcutError));
+  if (state.globalShortcutError) {
+    elements.pushToTalkStatus.textContent = state.globalShortcutError;
+  } else if (tauriGlobalShortcut && state.registeredGlobalShortcut) {
+    elements.pushToTalkStatus.textContent = `Global ${keyName} shortcut active—even while the game is focused.`;
+  } else if (tauriGlobalShortcut && state.capturingPushToTalkKey) {
+    elements.pushToTalkStatus.textContent = "Press the key you want to use, or press Escape to cancel.";
+  } else if (tauriGlobalShortcut) {
+    elements.pushToTalkStatus.textContent = `The global ${keyName} shortcut will activate after you join.`;
+  } else {
+    elements.pushToTalkStatus.textContent = `Keep this window focused to use the ${keyName} shortcut.`;
+  }
   renderParticipants();
+}
+
+function globalShortcutName(code) {
+  if (code.startsWith("Key")) return code.slice(3);
+  if (code.startsWith("Digit")) return code.slice(5);
+  return code;
+}
+
+function shouldRegisterGlobalShortcut() {
+  return Boolean(
+    tauriGlobalShortcut &&
+    state.transmissionMode === "push" &&
+    !state.capturingPushToTalkKey &&
+    !elements.roomView.classList.contains("hidden")
+  );
+}
+
+async function syncGlobalShortcut() {
+  if (!tauriGlobalShortcut) return;
+  const desired = shouldRegisterGlobalShortcut() ? globalShortcutName(state.pushToTalkKey) : null;
+  if (state.registeredGlobalShortcut && state.registeredGlobalShortcut !== desired) {
+    await tauriGlobalShortcut.unregister(state.registeredGlobalShortcut).catch(() => {});
+    state.registeredGlobalShortcut = null;
+  }
+  if (!desired || state.registeredGlobalShortcut === desired) {
+    if (!desired) state.globalShortcutError = "";
+    updateTransmissionUi();
+    return;
+  }
+  try {
+    await tauriGlobalShortcut.register(desired, (event) => {
+      setPushToTalkPressed(event.state === "Pressed");
+    });
+    state.registeredGlobalShortcut = desired;
+    state.globalShortcutError = "";
+  } catch (error) {
+    state.registeredGlobalShortcut = null;
+    state.globalShortcutError = `Could not register ${formatKeyCode(state.pushToTalkKey)} globally. Choose another key.`;
+    console.error("Global push-to-talk registration failed", error);
+  }
+  updateTransmissionUi();
+}
+
+function queueGlobalShortcutSync() {
+  state.globalShortcutSync = state.globalShortcutSync.then(syncGlobalShortcut, syncGlobalShortcut);
+  return state.globalShortcutSync;
 }
 
 function formatKeyCode(code) {
@@ -290,6 +363,7 @@ function beginPushToTalkKeyCapture() {
   state.capturingPushToTalkKey = true;
   applyAudioTrackState();
   updateTransmissionUi();
+  queueGlobalShortcutSync();
 }
 
 function capturePushToTalkKey(event) {
@@ -298,6 +372,7 @@ function capturePushToTalkKey(event) {
   if (event.code === "Escape") {
     state.capturingPushToTalkKey = false;
     updateTransmissionUi();
+    queueGlobalShortcutSync();
     return;
   }
   if (["ShiftLeft", "ShiftRight", "ControlLeft", "ControlRight", "AltLeft", "AltRight", "MetaLeft", "MetaRight"].includes(event.code)) {
@@ -308,6 +383,7 @@ function capturePushToTalkKey(event) {
   localStorage.setItem("quickcomms-push-to-talk-key", state.pushToTalkKey);
   elements.pushToTalkKeyButton.blur();
   updateTransmissionUi();
+  queueGlobalShortcutSync();
 }
 
 function setTransmissionMode(mode) {
@@ -317,10 +393,11 @@ function setTransmissionMode(mode) {
   localStorage.setItem("quickcomms-transmission-mode", state.transmissionMode);
   applyAudioTrackState();
   updateTransmissionUi();
+  queueGlobalShortcutSync();
 }
 
 function setPushToTalkPressed(pressed) {
-  if (state.transmissionMode !== "push" || state.muted || elements.roomView.classList.contains("hidden")) {
+  if (state.transmissionMode !== "push" || state.muted || state.capturingPushToTalkKey || elements.roomView.classList.contains("hidden")) {
     pressed = false;
   }
   if (state.pushToTalkPressed === pressed) return;
@@ -358,6 +435,7 @@ function leaveRoom(message = "") {
   elements.joinView.classList.remove("hidden");
   setOnline(false);
   resetJoinButton();
+  queueGlobalShortcutSync();
   if (message && message !== "User left") elements.error.textContent = message;
 }
 

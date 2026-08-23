@@ -3,5 +3,10 @@
   "identifier": "default",
   "description": "Default QuickComms desktop capability",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "global-shortcut:allow-is-registered",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister"
+  ]
 }
