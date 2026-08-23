@@ -100,6 +100,21 @@ pip install httpx pytest
 pytest
 ```
 
+## Remove the VM deployment
+
+The cleanup script removes only QuickComms containers, project networks, volumes, locally built images, and QuickComms-specific firewall rules. It preserves unrelated VM services and keeps `.env` by default.
+
+```bash
+chmod +x scripts/cleanup-vm.sh
+sudo ./scripts/cleanup-vm.sh
+```
+
+To also delete the local deployment secrets in `infrastructure/.env`:
+
+```bash
+sudo ./scripts/cleanup-vm.sh --purge-config
+```
+
 Before using it with friends, test these cases:
 
 1. Windows and macOS on the same Wi-Fi.
