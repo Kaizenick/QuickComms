@@ -45,6 +45,12 @@ jobs:
       - name: Build universal DMG
         run: npm run desktop:build:macos
 
+      - name: Verify microphone entitlement
+        run: |
+          codesign -d --entitlements :- \
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/QuickComms.app \
+            2>&1 | grep -q 'com.apple.security.device.audio-input'
+
       - name: Upload macOS installer
         uses: actions/upload-artifact@v4
         with:
